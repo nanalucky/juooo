@@ -54,6 +54,10 @@ namespace juooo
         bool bLoginSuccess;
         bool bAddressSuccess;
         string strAddressId = @"";
+        string strIdcard = @"";
+        bool bIdcardSuccess;
+        int nBuyIndex;
+        string strBuyK;
 
         CookieContainer cookieContainer = new CookieContainer();
         Encoding requestEncoding = Encoding.GetEncoding("utf-8");
@@ -208,6 +212,63 @@ namespace juooo
             }
         }
 
+        private void RespNoneCallback(IAsyncResult asynchronousResult)
+        {
+            try
+            {
+                // State of request is asynchronous.
+                RequestState myRequestState = (RequestState)asynchronousResult.AsyncState;
+                HttpWebRequest myHttpWebRequest = myRequestState.request;
+                myRequestState.response = (HttpWebResponse)myHttpWebRequest.EndGetResponse(asynchronousResult);
+                return;
+            }
+            catch (WebException e)
+            {
+                Console.WriteLine("\nRespCallback Exception raised!");
+                Console.WriteLine("\nMessage:{0}", e.Message);
+                Console.WriteLine("\nStatus:{0}", e.Status);
+            }
+        }
+
+        
+        private void RespIdcardCallback(IAsyncResult asynchronousResult)
+        {
+            try
+            {
+                // State of request is asynchronous.
+                RequestState myRequestState = (RequestState)asynchronousResult.AsyncState;
+                HttpWebRequest myHttpWebRequest = myRequestState.request;
+                myRequestState.response = (HttpWebResponse)myHttpWebRequest.EndGetResponse(asynchronousResult);
+
+                GetBody(myRequestState);
+                if (myRequestState.body.IndexOf(@"code") >= 0)
+                {
+                    JObject joBody = (JObject)JsonConvert.DeserializeObject(myRequestState.body);
+                    if (string.Compare((string)joBody["code"], "200", true) == 0)
+                    {
+                        JArray jaData = (JArray)joBody["data"];
+                        if(jaData.Count() >= 1)
+                            strIdcard = (string)((JObject)jaData[0])["user_certification_id"];
+                    }
+                    if (strIdcard == "")
+                        Program.form1.UpdateDataGridView(strAccount, Column.IdCard, "没有绑定身份证");
+                    else
+                        Program.form1.UpdateDataGridView(strAccount, Column.IdCard, string.Format("成功:{0}", strIdcard));
+                    bIdcardSuccess = true;
+                }
+
+                allDone.Set();
+                return;
+            }
+            catch (WebException e)
+            {
+                Console.WriteLine("\nRespCallback Exception raised!");
+                Console.WriteLine("\nMessage:{0}", e.Message);
+                Console.WriteLine("\nStatus:{0}", e.Status);
+                allDone.Set();
+            }
+        }
+
         private void RespBuyCallback(IAsyncResult asynchronousResult)
         {
             try
@@ -218,66 +279,58 @@ namespace juooo
                 myRequestState.response = (HttpWebResponse)myHttpWebRequest.EndGetResponse(asynchronousResult);
 
                 GetBody(myRequestState);
+                bool bSuccess = false;
                 if (myRequestState.body.IndexOf("code") >= 0)
                 {
                     JObject joBody = (JObject)JsonConvert.DeserializeObject(myRequestState.body);
-                    if (string.Compare((string)joBody["code"], "1", true) == 0)
+                    if (string.Compare((string)joBody["code"], "ok", true) == 0)
                     {
-                        Program.form1.UpdateDataGridView(strAccount, Column.Buy1 + myRequestState.nShow * 2, string.Format("{0}:成功", myRequestState.nBuyTimes));
+                        Program.form1.UpdateDataGridView(strAccount, Column.Buy1, string.Format("{0}:成功", myRequestState.nBuyTimes));
+                        string strData = (string)joBody["data"];
+                        int nStartK = strData.IndexOf("_k");
+                        if (nStartK > 0)
+                        {
+                            bSuccess = true;
 
-                        // submit
-                        myRequestState.request = WebRequest.Create(@"http://ticket.nelke.cn/nelke/order/m/submit") as HttpWebRequest;
-                        myRequestState.request.ProtocolVersion = HttpVersion.Version11;
-                        myRequestState.request.Method = "POST";
-                        myRequestState.request.Headers.Add("Origin", "http://ticket.nelke.cn");
-                        myRequestState.request.Referer = @"http://ticket.nelke.cn/nelke/ticket/pc/confirm.jsp";
-                        myRequestState.request.Headers.Add("Accept-Language", "zh-Hans-CN,zh-Hans;q=0.5");
-                        myRequestState.request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16299";
-                        myRequestState.request.ContentType = @"application/json";
-                        myRequestState.request.Accept = "application/json, text/javascript, */*; q=0.01";
-                        myRequestState.request.Headers.Add("X-Requested-With", "XMLHttpRequest");
-                        myRequestState.request.Headers.Add("Accept-Encoding", "gzip, deflate");
-                        myRequestState.request.Headers.Add("Pragma", "no-cache"); 
-                        myRequestState.request.CookieContainer = cookieContainer;
+                            nStartK = strData.IndexOf("=", nStartK) + 1;
+                            int nEndK = strData.IndexOf("&", nStartK);
+                            strBuyK = strData.Substring(nStartK, nEndK - nStartK);
 
-                        JObject joParam = new JObject(
-                            new JProperty("paymentType", "2"),
-                            new JProperty("deliveryType", "1"),
-                            //new JProperty("orderAddress", (JObject)(jaAddress[0])),
-                            new JProperty("id", "null"),
-                            new JProperty("userName", strUserName1),
-                            new JProperty("idType", "1"),
-                            new JProperty("idCard", strCard1),
-                            new JProperty("userName2", strUserName2),
-                            new JProperty("idType2", "1"),
-                            new JProperty("idCard2", strCard2)
-                        );
-                        StringBuilder buffer = new StringBuilder();
-                        buffer.AppendFormat("{0}", JsonConvert.SerializeObject(joParam));
-                        Byte[] data = requestEncoding.GetBytes(buffer.ToString());
-                        using (Stream stream = myRequestState.request.GetRequestStream())
-                        {
-                            stream.Write(data, 0, data.Length);
+                            // submit
+                            Program.form1.UpdateDataGridView(strAccount, Column.Confirm1, string.Format("{0}", myRequestState.nBuyTimes));
+                            myRequestState.request = WebRequest.Create(@"http://buy.juooo.com/Index/createOrder") as HttpWebRequest;
+                            myRequestState.request.ProtocolVersion = HttpVersion.Version11;
+                            myRequestState.request.Method = "POST";
+                            myRequestState.request.Accept = "application/json, text/javascript, */*; q=0.01";
+                            myRequestState.request.Headers.Add("Origin", "http://buy.juooo.com");
+                            myRequestState.request.Headers.Add("X-Requested-With", "XMLHttpRequest");
+                            myRequestState.request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16299";
+                            myRequestState.request.ContentType = @"application/x-www-form-urlencoded; charset=UTF-8";
+                            myRequestState.request.Headers.Add("Accept-Encoding", "gzip, deflate");
+                            myRequestState.request.Headers.Add("Accept-Language", "zh-CN,zh;q=0.8");
+                            myRequestState.request.CookieContainer = cookieContainer;
+
+                            StringBuilder buffer = new StringBuilder();
+                            buffer.AppendFormat("_k={0}", strBuyK);
+                            buffer.AppendFormat("&type=1&isClass=buyTicket&shippingId=1");
+                            buffer.AppendFormat("&addressId={0}", strAddressId);
+                            buffer.AppendFormat("&mobile=&payId=666&isScore=0&isCard=0&isCoupon=0&isUserMoney=0&is_sale_give=undefined_&ticketActivityId=&goods_deduction=&bankActivityId=&activityType=2&orderRemarks=");
+                            buffer.AppendFormat("&userCertificationId={0}", strIdcard);
+                            buffer.AppendFormat("&shippingScheduleId=&clientCityId=0");
+                            Byte[] data = requestEncoding.GetBytes(buffer.ToString());
+                            using (Stream stream = myRequestState.request.GetRequestStream())
+                            {
+                                stream.Write(data, 0, data.Length);
+                            }
+                            IAsyncResult result = (IAsyncResult)myRequestState.request.BeginGetResponse(new AsyncCallback(RespCreateOrderCallback), myRequestState);
                         }
-                        IAsyncResult result = (IAsyncResult)myRequestState.request.BeginGetResponse(new AsyncCallback(RespSubmitCallback), myRequestState);
-                    }
-                    else
-                    {
-                        Program.form1.UpdateDataGridView(strAccount, Column.Buy1 + myRequestState.nShow * 2, string.Format("{0}:{1}:{2}", myRequestState.nBuyTimes, (string)joBody["code"], (string)joBody["msg"]));
-                        if ((string)joBody["code"] == "E005")
-                        {
-                            listShowFinish[myRequestState.nShow] = true;
-                        }
-                        if ((string)joBody["code"] == "E001")
-                        {
-                            int nShow = myRequestState.nShow;
-                            listShowTicketIndex[nShow] = (listShowTicketIndex[nShow] + 1) % AllPlayers.listTicketData[nShow].productId.Count();
-                        }                    
                     }
                 }
-                else 
+
+                if (!bSuccess)
                 {
-                    Program.form1.UpdateDataGridView(strAccount, Column.Buy1 + myRequestState.nShow * 2, string.Format("{0}:失败}", myRequestState.nBuyTimes));
+                    Program.form1.UpdateDataGridView(strAccount, Column.Buy1, string.Format("{0}:失败}", myRequestState.nBuyTimes));
+                    allDone.Set();
                 }
             }
             catch (WebException e)
@@ -290,7 +343,7 @@ namespace juooo
         }
 
 
-        private void RespSubmitCallback(IAsyncResult asynchronousResult)
+        private void RespCreateOrderCallback(IAsyncResult asynchronousResult)
         {
             try
             {
@@ -303,10 +356,7 @@ namespace juooo
                 if (myRequestState.body.IndexOf("code") >= 0)
                 {
                     JObject joBody = (JObject)JsonConvert.DeserializeObject(myRequestState.body);
-                    if (string.Compare((string)joBody["code"], "1", true) == 0)
-                    {
-                        Program.form1.UpdateDataGridView(strAccount, Column.Confirm1 + myRequestState.nShow * 2, string.Format("{0}:成功", myRequestState.nBuyTimes));
-                    }
+                    Program.form1.UpdateDataGridView(strAccount, Column.Confirm1, string.Format("{0}:{1}", myRequestState.nBuyTimes, (string)joBody["code"]));
                 }
 
                 allDone.Set();
@@ -414,10 +464,79 @@ namespace juooo
             if (strAddressId == "")
                 return;
 
-            return;
+            int nIdcardTimes = 1;
+            bIdcardSuccess = false;
+            while (true)
+            {
+                Program.form1.UpdateDataGridView(strAccount, Column.IdCard, string.Format("开始:{0}", nIdcardTimes));
+                try
+                {
+                    allDone.Reset();
 
+                    RequestState requestState = new RequestState();
+                    ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
+                    requestState.request = WebRequest.Create(@"http://buy.juooo.com/Index/ajax?action=getUserIdNumber") as HttpWebRequest;
+                    requestState.request.ProtocolVersion = HttpVersion.Version11;
+                    requestState.request.Method = "POST";
+                    requestState.request.Accept = "application/json, text/javascript, */*; q=0.01";
+                    requestState.request.Headers.Add("X-Requested-With", "XMLHttpRequest");
+                    requestState.request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16299";
+                    requestState.request.Headers.Add("Accept-Encoding", "gzip, deflate");
+                    requestState.request.Headers.Add("Accept-Language", "zh-CN,zh;q=0.8"); 
+                    requestState.request.CookieContainer = cookieContainer;
+                    IAsyncResult result = (IAsyncResult)requestState.request.BeginGetResponse(new AsyncCallback(RespIdcardCallback), requestState);
+                    allDone.WaitOne();
+                }
+                catch (WebException e)
+                {
+                    Console.WriteLine("\nRespCallback Exception raised!");
+                    Console.WriteLine("\nMessage:{0}", e.Message);
+                    Console.WriteLine("\nStatus:{0}", e.Status);
+                }
+
+                if (bIdcardSuccess)
+                {
+                    break;
+                }
+                nIdcardTimes++;
+                if (nIdcardTimes > 10)
+                {
+                    Program.form1.UpdateDataGridView(strAccount, Column.IdCard, string.Format("放弃"));
+                    return;
+                }
+            }
+
+            DateTime lastTime = DateTime.Now;
             while ((DateTime.Now < AllPlayers.dtStartTime))
             {
+                // maintain login
+                if ((AllPlayers.dtStartTime - DateTime.Now).TotalMilliseconds > 60000 && (DateTime.Now - lastTime).TotalMilliseconds > 60000 * 5)
+                {
+                    try
+                    {
+                        RequestState requestState = new RequestState();
+                        ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
+                        requestState.request = WebRequest.Create(@"http://myjuooo.juooo.com/User/myaddress") as HttpWebRequest;
+                        requestState.request.ProtocolVersion = HttpVersion.Version11;
+                        requestState.request.Method = "GET";
+                        requestState.request.Accept = "text/html, application/xhtml+xml, image/jxr, */*";
+                        //requestState.request.Referer = "http://myjuooo.juooo.com/User/myorderlist";
+                        requestState.request.Headers.Add("Accept-Language", "zh-Hans-CN,zh-Hans;q=0.5");
+                        requestState.request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16299";
+                        requestState.request.Headers.Add("Accept-Encoding", "gzip, deflate");
+                        requestState.request.CookieContainer = cookieContainer;
+                        IAsyncResult result = (IAsyncResult)requestState.request.BeginGetResponse(new AsyncCallback(RespNoneCallback), requestState);
+                    }
+                    catch (WebException e)
+                    {
+                        Console.WriteLine("\nRespCallback Exception raised!");
+                        Console.WriteLine("\nMessage:{0}", e.Message);
+                        Console.WriteLine("\nStatus:{0}", e.Status);
+                    }
+
+                    lastTime = DateTime.Now;
+                }
+
                 if ((AllPlayers.dtStartTime - DateTime.Now).TotalMilliseconds > 60000)
                     Thread.Sleep(60000);
                 else if ((AllPlayers.dtStartTime - DateTime.Now).TotalMilliseconds > 1000)
@@ -430,64 +549,50 @@ namespace juooo
 
 
             int nBuyTimes = 1;
-            listShowFinish = new List<bool>();
-            listShowTicketIndex = new List<int>();
-            for (int nShow = 0; nShow < AllPlayers.listTicketData.Count(); nShow++)
-            {
-                int nProductId = nIndex % AllPlayers.listTicketData[nShow].productId.Count();
-                listShowTicketIndex.Add(nProductId);
-                listShowFinish.Add(false);
-            }
+            nBuyIndex = 0;
+            strBuyK = "";
             
             while ((DateTime.Now <= AllPlayers.dtEndTime))
             {
-
-                for (int nShow = 0; nShow < AllPlayers.listTicketData.Count(); nShow++)
+                try
                 {
-                    if (listShowFinish[nShow])
+                    allDone.Reset();
+                    int nProductId = AllPlayers.listTicketData[0].productId[nBuyIndex];
+
+                    Program.form1.UpdateDataGridView(strAccount, Column.Buy1, string.Format("{0}:{1}", nBuyTimes, nProductId));
+                    ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
+                    RequestState requestState = new RequestState();
+                    requestState.nBuyTimes = nBuyTimes;
+                    requestState.request = WebRequest.Create(@"http://item.juooo.com/Index/buyTickets") as HttpWebRequest;
+                    requestState.request.ProtocolVersion = HttpVersion.Version11;
+                    requestState.request.Method = "POST";
+                    requestState.request.Accept = "application/json, text/javascript, */*; q=0.01";
+                    requestState.request.Headers.Add("Origin", "http://item.juooo.com");
+                    requestState.request.Headers.Add("X-Requested-With", "XMLHttpRequest");
+                    requestState.request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16299";
+                    requestState.request.ContentType = "application/x-www-form-urlencoded; charset=UTF-8";
+                    requestState.request.Headers.Add("Accept-Encoding", "gzip, deflate");
+                    requestState.request.Headers.Add("Accept-Language", "zh-CN,zh;q=0.8");
+                    requestState.request.CookieContainer = cookieContainer;
+
+                    StringBuilder buffer = new StringBuilder();
+                    buffer.AppendFormat(@"type=1&tickets={0}_{1}_2", nProductId, AllPlayers.listTicketData[0].quantity);
+                    Byte[] data = requestEncoding.GetBytes(buffer.ToString());
+                    using (Stream stream = requestState.request.GetRequestStream())
                     {
-                        continue;
-                    }
-
-                    try
-                    {
-                        int nProductId = listShowTicketIndex[nShow];
-
-                        Program.form1.UpdateDataGridView(strAccount, Column.Buy1 + nShow * 2, string.Format("{0}:{1}", nBuyTimes, AllPlayers.listTicketData[nShow].productId[nProductId]));
-                        ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
-                        RequestState requestState = new RequestState();
-                        requestState.nShow = nShow;
-                        requestState.nBuyTimes = nBuyTimes;
-                        requestState.request = WebRequest.Create(@"http://ticket.nelke.cn/nelke/order/m/buy") as HttpWebRequest;
-                        requestState.request.ProtocolVersion = HttpVersion.Version11;
-                        requestState.request.Method = "POST";
-                        requestState.request.Headers.Add("Origin", "http://ticket.nelke.cn");
-                        requestState.request.Referer = string.Format("http://ticket.nelke.cn/nelke/ticket/pc/performance.jsp?id={0}&region={1}", AllPlayers.nId, AllPlayers.nRegion);
-                        requestState.request.Headers.Add("Accept-Language", "zh-Hans-CN,zh-Hans;q=0.5");
-                        requestState.request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16299";
-                        requestState.request.ContentType = "application/json";
-                        requestState.request.Accept = "application/json, text/javascript, */*; q=0.01";
-                        requestState.request.Headers.Add("X-Requested-With", "XMLHttpRequest");
-                        requestState.request.Headers.Add("Accept-Encoding", "gzip, deflate");
-                        requestState.request.Headers.Add("Pragma", "no-cache");
-                        requestState.request.CookieContainer = cookieContainer;
-
-                        StringBuilder buffer = new StringBuilder();
-                        buffer.AppendFormat(@"[{{""productId"":{0},""quantity"":""{1}""}}]", AllPlayers.listTicketData[nShow].productId[nProductId], (strUserName2 != "") ? AllPlayers.listTicketData[nShow].quantity : 1);
-                        Byte[] data = requestEncoding.GetBytes(buffer.ToString());
-                        using (Stream stream = requestState.request.GetRequestStream())
-                        {
-                            stream.Write(data, 0, data.Length);
-                        } 
+                        stream.Write(data, 0, data.Length);
+                    } 
                        
-                        IAsyncResult result = (IAsyncResult)requestState.request.BeginGetResponse(new AsyncCallback(RespBuyCallback), requestState);
-                    }
-                    catch (WebException e)
-                    {
-                        Console.WriteLine("\nRespCallback Exception raised!");
-                        Console.WriteLine("\nMessage:{0}", e.Message);
-                        Console.WriteLine("\nStatus:{0}", e.Status);
-                    }
+                    IAsyncResult result = (IAsyncResult)requestState.request.BeginGetResponse(new AsyncCallback(RespBuyCallback), requestState);
+                    allDone.WaitOne();
+
+                    nBuyIndex = (nBuyIndex + 1) % AllPlayers.listTicketData[0].productId.Count();
+                }
+                catch (WebException e)
+                {
+                    Console.WriteLine("\nRespCallback Exception raised!");
+                    Console.WriteLine("\nMessage:{0}", e.Message);
+                    Console.WriteLine("\nStatus:{0}", e.Status);
                 }
 
                 nBuyTimes++;
@@ -509,8 +614,6 @@ namespace juooo
         public static int nInterval = 1000;
         public static DateTime dtStartTime;
         public static DateTime dtEndTime;
-        public static int nId;
-        public static int nRegion;
         public static List<TicketData> listTicketData = new List<TicketData>();
         public static List<Player> listPlayer = new List<Player>();
 
@@ -524,8 +627,6 @@ namespace juooo
             dtStartTime = DateTime.Parse((string)joInfo["StartTime"]);
             dtEndTime = DateTime.Parse((string)joInfo["EndTime"]);
             nInterval = (int)joInfo["interval"];
-            nId = (int)joInfo["id"];
-            nRegion = (int)joInfo["region"];
             listTicketData = new List<TicketData>();
             JArray jaData = (JArray)joInfo["data"];
             foreach (JObject ticket in jaData)
