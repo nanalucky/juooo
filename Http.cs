@@ -53,7 +53,7 @@ namespace juooo
         public Thread thread;
         bool bLoginSuccess;
         bool bAddressSuccess;
-        JArray jaAddress;
+        string strAddressId = @"";
 
         CookieContainer cookieContainer = new CookieContainer();
         Encoding requestEncoding = Encoding.GetEncoding("utf-8");
@@ -180,18 +180,20 @@ namespace juooo
                 myRequestState.response = (HttpWebResponse)myHttpWebRequest.EndGetResponse(asynchronousResult);
 
                 GetBody(myRequestState);
-                if (myRequestState.body.IndexOf("code") >= 0)
+                if (myRequestState.body.IndexOf(@"<!DOCTYPE HTML>") >= 0)
                 {
-                    JObject joBody = (JObject)JsonConvert.DeserializeObject(myRequestState.body);
-                    if (string.Compare((string)joBody["code"], "1", true) == 0)
+                    if (myRequestState.body.IndexOf("address-id=") >= 0)
                     {
-                        jaAddress = (JArray)((JObject)joBody["data"])["address_info"];
-                        if(jaAddress.Count() == 0)
-                            Program.form1.UpdateDataGridView(strAccount, Column.Address, "没有地址");
-                        else
-                            Program.form1.UpdateDataGridView(strAccount, Column.Address, "成功");
-                        bAddressSuccess = true;
+                        int nAddrStart = myRequestState.body.IndexOf("address-id=");
+                        nAddrStart = myRequestState.body.IndexOf(@"""", nAddrStart) + 1;
+                        int nAddrEnd = myRequestState.body.IndexOf(@"""", nAddrStart);
+                        strAddressId = myRequestState.body.Substring(nAddrStart, nAddrEnd - nAddrStart);
                     }
+                    if (strAddressId == "")
+                        Program.form1.UpdateDataGridView(strAccount, Column.Address, "没有地址");
+                    else
+                        Program.form1.UpdateDataGridView(strAccount, Column.Address, string.Format("成功:{0}", strAddressId));
+                    bAddressSuccess = true;
                 }
 
                 allDone.Set();
@@ -241,7 +243,7 @@ namespace juooo
                         JObject joParam = new JObject(
                             new JProperty("paymentType", "2"),
                             new JProperty("deliveryType", "1"),
-                            new JProperty("orderAddress", (JObject)(jaAddress[0])),
+                            //new JProperty("orderAddress", (JObject)(jaAddress[0])),
                             new JProperty("id", "null"),
                             new JProperty("userName", strUserName1),
                             new JProperty("idType", "1"),
@@ -367,9 +369,6 @@ namespace juooo
                 Thread.Sleep(500);
             }
 
-            return;
-
-
             int nAddressTimes = 1;
             bAddressSuccess = false;
             while (true)
@@ -381,14 +380,13 @@ namespace juooo
 
                     RequestState requestState = new RequestState();
                     ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
-                    requestState.request = WebRequest.Create(@"http://ticket.nelke.cn/nelke/member/address/l ") as HttpWebRequest;
+                    requestState.request = WebRequest.Create(@"http://myjuooo.juooo.com/User/myaddress") as HttpWebRequest;
                     requestState.request.ProtocolVersion = HttpVersion.Version11;
                     requestState.request.Method = "GET";
-                    requestState.request.Referer = "http://ticket.nelke.cn/nelke/ticket/pc/confirm.jsp";
+                    requestState.request.Accept = "text/html, application/xhtml+xml, image/jxr, */*";
+                    requestState.request.Referer = "http://myjuooo.juooo.com/User/myorderlist";
                     requestState.request.Headers.Add("Accept-Language", "zh-Hans-CN,zh-Hans;q=0.5");
                     requestState.request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16299";
-                    requestState.request.Accept = "application/json, text/javascript, */*; q=0.01";
-                    requestState.request.Headers.Add("X-Requested-With", "XMLHttpRequest");
                     requestState.request.Headers.Add("Accept-Encoding", "gzip, deflate");
                     requestState.request.CookieContainer = cookieContainer;
                     IAsyncResult result = (IAsyncResult)requestState.request.BeginGetResponse(new AsyncCallback(RespAddressCallback), requestState);
@@ -413,8 +411,10 @@ namespace juooo
                 }
             }
 
-            if (jaAddress.Count() == 0)
+            if (strAddressId == "")
                 return;
+
+            return;
 
             while ((DateTime.Now < AllPlayers.dtStartTime))
             {

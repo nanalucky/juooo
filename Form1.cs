@@ -16,6 +16,7 @@ namespace juooo
         Telephone = 0,
         Login,
         Address,
+        IdCard,
         Buy1,
         Confirm1,
         Buy2,
