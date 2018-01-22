@@ -102,22 +102,24 @@ namespace juooo
                 myRequestState.response = (HttpWebResponse)myHttpWebRequest.EndGetResponse(asynchronousResult);
 
                 ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
-                myRequestState.request = WebRequest.Create(@"http://ticket.nelke.cn/nelke/member/login") as HttpWebRequest;
+                myRequestState.request = WebRequest.Create(@"http://passport.juooo.com/User/login") as HttpWebRequest;
                 myRequestState.request.ProtocolVersion = HttpVersion.Version11;
                 myRequestState.request.Method = "POST";
-                myRequestState.request.Headers.Add("Origin", "http://ticket.nelke.cn");
-                myRequestState.request.Referer = @"http://ticket.nelke.cn/nelke/ticket/pc/login.jsp";
+                myRequestState.request.Headers.Add("Origin", "http://passport.juooo.com");
+                myRequestState.request.Referer = @"http://passport.juooo.com/User/login";
                 myRequestState.request.Headers.Add("Accept-Language", "zh-Hans-CN,zh-Hans;q=0.5");
                 myRequestState.request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16299";
                 myRequestState.request.ContentType = @"application/x-www-form-urlencoded; charset=UTF-8";
                 myRequestState.request.Accept = "application/json, text/javascript, */*; q=0.01";
+                myRequestState.request.Headers.Add("X-Requested-With", "XMLHttpRequest");
+                myRequestState.request.Headers.Add("Accept-Encoding", "gzip, deflate");
+                myRequestState.request.Headers.Add("Pragma", "no-cache"); 
                 myRequestState.request.CookieContainer = cookieContainer;
 
                 StringBuilder buffer = new StringBuilder();
-                buffer.AppendFormat("{0}={1}", "loginName", strAccount);
+                buffer.AppendFormat("{0}={1}", "username", strAccount);
                 buffer.AppendFormat("&{0}={1}", "password", strPassword);
-                buffer.AppendFormat("&{0}={1}", "identifyingCode", "");
-                buffer.AppendFormat("&{0}={1}", "remember", "false");
+                buffer.AppendFormat("&{0}={1}", "isCard", "1");
                 Byte[] data = requestEncoding.GetBytes(buffer.ToString());
                 using (Stream stream = myRequestState.request.GetRequestStream())
                 {
@@ -334,7 +336,7 @@ namespace juooo
 
                     RequestState requestState = new RequestState();
                     ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
-                    requestState.request = WebRequest.Create(@"http://ticket.nelke.cn/nelke/ticket/pc/login.jsp ") as HttpWebRequest;
+                    requestState.request = WebRequest.Create(@"http://passport.juooo.com/User/login") as HttpWebRequest;
                     requestState.request.ProtocolVersion = HttpVersion.Version11;
                     requestState.request.Method = "GET";
                     requestState.request.Accept = "text/html, application/xhtml+xml, image/jxr, */*";
@@ -364,6 +366,8 @@ namespace juooo
                 }
                 Thread.Sleep(500);
             }
+
+            return;
 
 
             int nAddressTimes = 1;

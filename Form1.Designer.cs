@@ -43,7 +43,6 @@
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle13 = new System.Windows.Forms.DataGridViewCellStyle();
             this.richTextBoxStatus = new System.Windows.Forms.RichTextBox();
             this.dataGridViewInfo = new System.Windows.Forms.DataGridView();
-            this.button1 = new System.Windows.Forms.Button();
             this.Telephone = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Login = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Address = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -57,6 +56,7 @@
             this.Confirm4 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Buy5 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Confirm5 = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.button1 = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridViewInfo)).BeginInit();
             this.SuspendLayout();
             // 
@@ -90,16 +90,6 @@
             this.dataGridViewInfo.RowTemplate.Height = 30;
             this.dataGridViewInfo.Size = new System.Drawing.Size(1203, 527);
             this.dataGridViewInfo.TabIndex = 40;
-            // 
-            // button1
-            // 
-            this.button1.Location = new System.Drawing.Point(27, 38);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(147, 62);
-            this.button1.TabIndex = 39;
-            this.button1.Text = "运行";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
             // Telephone
             // 
@@ -217,6 +207,16 @@
             this.Confirm5.ReadOnly = true;
             this.Confirm5.Width = 120;
             // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(27, 38);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(147, 62);
+            this.button1.TabIndex = 39;
+            this.button1.Text = "运行";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 18F);
@@ -226,7 +226,7 @@
             this.Controls.Add(this.dataGridViewInfo);
             this.Controls.Add(this.button1);
             this.Name = "Form1";
-            this.Text = "Form1";
+            this.Text = "Juooo";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridViewInfo)).EndInit();
             this.ResumeLayout(false);
