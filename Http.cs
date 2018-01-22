@@ -650,18 +650,11 @@ namespace juooo
             for (int i = 0; i < arrayText.Length; ++i)
             {
                 string[] arrayParam = arrayText[i].Split(new char[] { ',' });
-                if (arrayParam.Length >=4)
+                if (arrayParam.Length >=2)
                 {
                     Player player = new Player();
                     player.strAccount = arrayParam[0];
                     player.strPassword = arrayParam[1];
-                    player.strUserName1 = arrayParam[2];
-                    player.strCard1 = arrayParam[3];
-                    if (arrayParam.Length >= 6)
-                    {
-                        player.strUserName2 = arrayParam[4];
-                        player.strCard2 = arrayParam[5];
-                    }
                     player.thread = new Thread(new ThreadStart(player.Run));
                     player.nIndex = nIndex++;
                     listPlayer.Add(player);
