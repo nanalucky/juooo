@@ -373,7 +373,7 @@ namespace juooo
 
         void SendHeartBeat()
         {
-            int nInterval = 10;// 60000 * 2;
+            int nInterval = 60000 * 2;
             DateTime lastTime = DateTime.Now;
             while ((DateTime.Now < AllPlayers.dtEndTime))
             {
@@ -634,7 +634,15 @@ namespace juooo
         public static void Init()
         {
             string szConfigFileName = System.Environment.CurrentDirectory + @"\" + @"config.txt";
-            string szAccountFileName = System.Environment.CurrentDirectory + @"\" + @"account.csv";
+            string szAccountFileName = "";
+
+            DirectoryInfo folderCurrent = new DirectoryInfo(System.Environment.CurrentDirectory);
+            foreach (FileInfo NextFile in folderCurrent.GetFiles())
+            {
+                if (string.Equals(NextFile.Extension, ".csv", StringComparison.OrdinalIgnoreCase))
+                    szAccountFileName = NextFile.DirectoryName + @"\" + NextFile.Name;
+            }
+
 
             string[] arrayConfig = File.ReadAllLines(szConfigFileName);
             JObject joInfo = (JObject)JsonConvert.DeserializeObject(arrayConfig[0]);
