@@ -36,6 +36,17 @@ namespace juooo
             nShow = 0;
             nBuyTimes = 0;
         }
+
+        public void ClearConnect()
+        {
+            if (response != null)
+                response.Close();
+            if (request != null)
+                request.Abort();
+            response = null;
+            request = null;
+            System.GC.Collect();
+        }
     }
     
     class Player
@@ -104,8 +115,8 @@ namespace juooo
                 RequestState myRequestState = (RequestState)asynchronousResult.AsyncState;
                 HttpWebRequest myHttpWebRequest = myRequestState.request;
                 myRequestState.response = (HttpWebResponse)myHttpWebRequest.EndGetResponse(asynchronousResult);
+                myRequestState.ClearConnect();
 
-                ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
                 myRequestState.request = WebRequest.Create(@"http://passport.juooo.com/User/login") as HttpWebRequest;
                 myRequestState.request.ProtocolVersion = HttpVersion.Version11;
                 myRequestState.request.Method = "POST";
@@ -152,6 +163,8 @@ namespace juooo
                 myRequestState.response = (HttpWebResponse)myHttpWebRequest.EndGetResponse(asynchronousResult);
 
                 GetBody(myRequestState);
+                myRequestState.ClearConnect();
+
                 if (myRequestState.body.IndexOf("code") >= 0)
                 {
                     JObject joBody = (JObject)JsonConvert.DeserializeObject(myRequestState.body);
@@ -184,6 +197,8 @@ namespace juooo
                 myRequestState.response = (HttpWebResponse)myHttpWebRequest.EndGetResponse(asynchronousResult);
 
                 GetBody(myRequestState);
+                myRequestState.ClearConnect();
+
                 if (myRequestState.body.IndexOf(@"<!DOCTYPE HTML>") >= 0)
                 {
                     if (myRequestState.body.IndexOf("address-id=") >= 0)
@@ -220,6 +235,7 @@ namespace juooo
                 RequestState myRequestState = (RequestState)asynchronousResult.AsyncState;
                 HttpWebRequest myHttpWebRequest = myRequestState.request;
                 myRequestState.response = (HttpWebResponse)myHttpWebRequest.EndGetResponse(asynchronousResult);
+                myRequestState.ClearConnect();
                 return;
             }
             catch (WebException e)
@@ -241,6 +257,8 @@ namespace juooo
                 myRequestState.response = (HttpWebResponse)myHttpWebRequest.EndGetResponse(asynchronousResult);
 
                 GetBody(myRequestState);
+                myRequestState.ClearConnect();
+
                 if (myRequestState.body.IndexOf(@"code") >= 0)
                 {
                     JObject joBody = (JObject)JsonConvert.DeserializeObject(myRequestState.body);
@@ -279,6 +297,8 @@ namespace juooo
                 myRequestState.response = (HttpWebResponse)myHttpWebRequest.EndGetResponse(asynchronousResult);
 
                 GetBody(myRequestState);
+                myRequestState.ClearConnect();
+
                 bool bSuccess = false;
                 if (myRequestState.body.IndexOf("code") >= 0)
                 {
@@ -353,6 +373,8 @@ namespace juooo
                 myRequestState.response = (HttpWebResponse)myHttpWebRequest.EndGetResponse(asynchronousResult);
 
                 GetBody(myRequestState);
+                myRequestState.ClearConnect();
+
                 if (myRequestState.body.IndexOf("code") >= 0)
                 {
                     JObject joBody = (JObject)JsonConvert.DeserializeObject(myRequestState.body);
@@ -384,7 +406,6 @@ namespace juooo
                     try
                     {
                         RequestState requestState = new RequestState();
-                        ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
                         requestState.request = WebRequest.Create(@"http://myjuooo.juooo.com/User/myaddress") as HttpWebRequest;
                         requestState.request.ProtocolVersion = HttpVersion.Version11;
                         requestState.request.Method = "GET";
@@ -427,7 +448,6 @@ namespace juooo
                     allDone.Reset();
 
                     RequestState requestState = new RequestState();
-                    ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
                     requestState.request = WebRequest.Create(@"http://passport.juooo.com/User/login") as HttpWebRequest;
                     requestState.request.ProtocolVersion = HttpVersion.Version11;
                     requestState.request.Method = "GET";
@@ -469,7 +489,6 @@ namespace juooo
                     allDone.Reset();
 
                     RequestState requestState = new RequestState();
-                    ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
                     requestState.request = WebRequest.Create(@"http://myjuooo.juooo.com/User/myaddress") as HttpWebRequest;
                     requestState.request.ProtocolVersion = HttpVersion.Version11;
                     requestState.request.Method = "GET";
@@ -514,7 +533,6 @@ namespace juooo
                     allDone.Reset();
 
                     RequestState requestState = new RequestState();
-                    ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
                     requestState.request = WebRequest.Create(@"http://buy.juooo.com/Index/ajax?action=getUserIdNumber") as HttpWebRequest;
                     requestState.request.ProtocolVersion = HttpVersion.Version11;
                     requestState.request.Method = "POST";
@@ -574,7 +592,6 @@ namespace juooo
                     int nProductId = AllPlayers.listTicketData[0].productId[nBuyIndex];
 
                     Program.form1.UpdateDataGridView(strAccount, Column.Buy1, string.Format("{0}:{1}", nBuyTimes, nProductId));
-                    ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
                     RequestState requestState = new RequestState();
                     requestState.nBuyTimes = nBuyTimes;
                     requestState.request = WebRequest.Create(@"http://item.juooo.com/Index/buyTickets") as HttpWebRequest;
@@ -688,6 +705,9 @@ namespace juooo
 
         public static void Run()
         {
+            ServicePointManager.DefaultConnectionLimit = int.MaxValue;
+            ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(Http.CheckValidationResult);
+
             foreach (Player player in listPlayer)
             {
                 player.thread.Start();
