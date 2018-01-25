@@ -349,7 +349,7 @@ namespace juooo
 
                 if (!bSuccess)
                 {
-                    Program.form1.UpdateDataGridView(strAccount, Column.Buy1, string.Format("{0}:失败}", myRequestState.nBuyTimes));
+                    Program.form1.UpdateDataGridView(strAccount, Column.Buy1, string.Format("{0}:失败", myRequestState.nBuyTimes));
                     allDone.Set();
                 }
             }
